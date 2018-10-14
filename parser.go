@@ -1,9 +1,15 @@
 package parser
 
 import (
+	"bufio"
+	"fmt"
 	"log"
+	"os"
+	"reflect"
+	"regexp"
 	"time"
 
+	"github.com/CrowdSurge/banner"
 	"github.com/spf13/viper"
 )
 
@@ -13,11 +19,20 @@ type LogFormat struct {
 	Loglevel string
 	Pid      int
 	Tid      int
-	Source   string
 	Apr      string
 	Client   string
 	Message  string
-	Request  string
+}
+
+// RegexCollection : Regex used to catch Apache error log entries
+var RegexCollection = []string{
+	`\[(.+?)\]`,
+	`\s\[(.*?)\]`,
+	`\s\[pid\s(.*?):`,
+	`tid\s(\d+?)\]`,
+	`\]\s(\(.*?\).*?\:)\s\[`,
+	`\s\[client\s(.+?)]`,
+	`\d\]\s(\w[^,\n]*)`,
 }
 
 // ConfigFile : Define path and filename (without extension) of config file
@@ -28,12 +43,18 @@ type ConfigFile struct {
 
 // ConfigContent : Entries in config file
 type ConfigContent struct {
-	One string
-	Two string
+	Log        string
+	TimeFormat string
 }
 
 // C : Stores ConfigContent
 var C ConfigContent
+
+// Welcome : Print startup
+func Welcome() {
+	banner.Print("apache error log parser")
+	banner.Print("-----------------------")
+}
 
 // Config : Handle configuration file
 func Config(path, filename string) {
@@ -53,4 +74,60 @@ func Config(path, filename string) {
 	if err != nil {
 		log.Fatalf("unable to decode into struct, %v", err)
 	}
+	Welcome()
+	parseLog(C.Log)
+}
+
+func readLines(path string) ([]string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var lines []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	return lines, scanner.Err()
+}
+
+func matchRegex(line string) {
+	logformat := LogFormat{}
+	e := reflect.ValueOf(&logformat).Elem()
+	logCounter := -1
+	for _, errorRegex := range RegexCollection {
+		logCounter++
+		re1, err := regexp.Compile(errorRegex)
+		if err != nil {
+			log.Fatalf("regexp: %s", err)
+		}
+		result := re1.FindStringSubmatch(line)
+
+		LogItem := e.Type().Field(logCounter).Name
+
+		if len(result) > 0 {
+			fmt.Println(LogItem, result[1])
+		} else {
+			fmt.Println(LogItem, "")
+		}
+	}
+	return
+}
+
+func parseLog(file string) ([]LogFormat, error) {
+	var items []LogFormat
+
+	lines, err := readLines(file)
+	if err != nil {
+		log.Fatalf("readLines: %s", err)
+	}
+	for _, line := range lines {
+		fmt.Println("##############################################")
+		fmt.Println("")
+		matchRegex(line)
+		fmt.Println("")
+	}
+	return items, nil
 }
