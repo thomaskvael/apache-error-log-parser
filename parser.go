@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/CrowdSurge/banner"
@@ -95,6 +96,7 @@ func readLines(path string) ([]string, error) {
 
 func matchRegex(line string) {
 	logformat := LogFormat{}
+	logMap := map[string]string{}
 	e := reflect.ValueOf(&logformat).Elem()
 	logCounter := -1
 	for _, errorRegex := range RegexCollection {
@@ -109,10 +111,19 @@ func matchRegex(line string) {
 
 		if len(result) > 0 {
 			fmt.Println(LogItem, result[1])
+			logMap[strings.ToLower(LogItem)] = result[1]
 		} else {
 			fmt.Println(LogItem, "")
 		}
 	}
+	insertDatabase(logMap)
+	/*
+		fmt.Println(logMap)
+		for k, v := range logMap {
+			fmt.Println(k, v)
+
+		}
+	*/
 	return
 }
 
