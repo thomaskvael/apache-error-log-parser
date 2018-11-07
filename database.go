@@ -3,6 +3,7 @@ package parser
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql" // Import mysql driver
 )
@@ -26,7 +27,13 @@ func insertDatabase(logMap map[string]string) {
 			fmt.Println(k, v)
 		}
 	*/
-	fmt.Println(logMap["time"])
+
+	// Parse and format time.Time to Mysql Datetime
+	t, _ := time.Parse("Mon Jan 02 15:04:05.999999 2006", logMap["time"])
+	mysqlDatetime := t.Format("2006-01-02 15:04:05")
+
+	fmt.Println("fddfdf")
+	fmt.Println(mysqlDatetime)
 	fmt.Println(logMap["loglevel"])
 	fmt.Println(logMap["pid"])
 	fmt.Println(logMap["tid"])
@@ -40,7 +47,7 @@ func insertDatabase(logMap map[string]string) {
 	stmt, err := db.Prepare("INSERT INTO logs (time, loglevel, pid, tid, apr, client, message) VALUES (?,?,?,?,?,?,?)")
 	checkErr(err)
 
-	res, err := stmt.Exec(logMap["time"], logMap["loglevel"], logMap["pid"], logMap["tid"], logMap["apr"], logMap["client"], logMap["message"])
+	res, err := stmt.Exec(mysqlDatetime, logMap["loglevel"], logMap["pid"], logMap["tid"], logMap["apr"], logMap["client"], logMap["message"])
 	checkErr(err)
 
 	id, err := res.LastInsertId()
